@@ -26,7 +26,7 @@
                 {% for produto in produtos_ativos %}
                 <div class="product-card">
                     {% if produto.imagem_url %}
-                    <img src="{{ produto.imagem_url }}" alt="{{ produto.nome }}" class="product-image">
+                    <img src="{{ url_for('uploaded_file', filename=produto.imagem_url) }}" alt="{{ produto.nome }}" class="product-image">
                     {% else %}
                     <div class="product-image placeholder-image">Sem imagem</div>
                     {% endif %}
@@ -59,7 +59,6 @@
         <button class="back-button" onclick="closeCartModal()" style="background: #666; margin-top: 1rem;">Fechar</button>
     </div>
 </div>
-
 
 <script>
 let cart = {};

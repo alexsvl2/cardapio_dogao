@@ -1,14 +1,22 @@
 # app.py
 
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.utils import secure_filename
 
 # --- Configuração do App ---
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'sua-chave-secreta-muito-segura' # Troque por uma chave real e secreta
+app.config['SECRET_KEY'] = 'sua-chave-secreta-muito-segura'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# --- Configuração da pasta de uploads ---
+# Define o caminho para a pasta 'uploads' dentro da pasta 'instance'
+UPLOAD_FOLDER = os.path.join(app.instance_path, 'uploads')
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# Garante que a pasta 'uploads' exista
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 db = SQLAlchemy(app)
 
@@ -25,7 +33,7 @@ class Produto(db.Model):
     nome = db.Column(db.String(100), nullable=False)
     preco = db.Column(db.Float, nullable=False)
     descricao = db.Column(db.String(500), nullable=True)
-    imagem_url = db.Column(db.String(250), nullable=True)
+    imagem_url = db.Column(db.String(250), nullable=True) # Agora armazena o nome do arquivo
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categoria.id'), nullable=False)
 
@@ -35,22 +43,23 @@ class Produto(db.Model):
 @app.route('/')
 def cliente_cardapio():
     categorias = Categoria.query.all()
-    whatsapp_number = "5519986088874" # Adicione o 55 para o código do país
+    whatsapp_number = "5519986088874"
     return render_template('cliente_cardapio.html', categorias=categorias, whatsapp_number=whatsapp_number)
+
+# Rota para servir as imagens que foram salvas via upload
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 # --- Rotas do Painel Administrativo ---
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Sistema de login simples (sem banco de dados para usuários por enquanto)
-    # Em um projeto real, use Flask-Login e hasheie as senhas!
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        if username == 'admin' and password == 'dogao123': # Usuário e senha provisórios
+        if username == 'admin' and password == 'dogao123':
             flash('Login realizado com sucesso!', 'success')
-            # Usaremos uma "sessão" simples aqui, mas o ideal é Flask-Login
-            # Para este exemplo, vamos apenas redirecionar.
             return redirect(url_for('dashboard'))
         else:
             flash('Usuário ou senha inválidos.', 'danger')
@@ -63,19 +72,23 @@ def dashboard():
 @app.route('/admin/cardapio', methods=['GET', 'POST'])
 def admin_cardapio():
     if request.method == 'POST':
-        # Lógica para adicionar novo produto
-        nome = request.form['productName']
-        preco = float(request.form['productPrice'])
-        descricao = request.form['productDescription']
-        imagem = request.form['productImage']
-        categoria_id = request.form['productCategory']
+        imagem_salva = None
+        # Verifica se um arquivo foi enviado no formulário
+        if 'productImage' in request.files:
+            file = request.files['productImage']
+            # Se o arquivo tiver um nome (ou seja, não está vazio)
+            if file.filename != '':
+                # Garante que o nome do arquivo é seguro
+                imagem_salva = secure_filename(file.filename)
+                # Salva o arquivo na nossa pasta de uploads
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], imagem_salva))
 
         novo_produto = Produto(
-            nome=nome,
-            preco=preco,
-            descricao=descricao,
-            imagem_url=imagem,
-            categoria_id=categoria_id
+            nome=request.form['productName'],
+            preco=float(request.form['productPrice']),
+            descricao=request.form['productDescription'],
+            categoria_id=request.form['productCategory'],
+            imagem_url=imagem_salva  # Salva o nome do arquivo no banco
         )
         db.session.add(novo_produto)
         db.session.commit()
@@ -94,7 +107,6 @@ def toggle_produto(produto_id):
     flash(f'Produto {produto.nome} foi {status}.', 'info')
     return redirect(url_for('admin_cardapio'))
 
-
 # --- Comando para inicializar o banco de dados ---
 @app.cli.command("init-db")
 def init_db_command():
@@ -102,7 +114,6 @@ def init_db_command():
     db.create_all()
     print("Banco de dados inicializado.")
 
-    # Verifica se as categorias já existem para não duplicar
     if Categoria.query.count() == 0:
         categorias_iniciais = [
             {'id': 1, 'nome': 'Lanches', 'descricao': 'Hambúrgueres artesanais e sanduíches especiais', 'imagem_url': 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&h=300&fit=crop'},
