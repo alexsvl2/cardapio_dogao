@@ -12,10 +12,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # --- Configuração da pasta de uploads ---
-# Define o caminho para a pasta 'uploads' dentro da pasta 'instance'
 UPLOAD_FOLDER = os.path.join(app.instance_path, 'uploads')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-# Garante que a pasta 'uploads' exista
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 db = SQLAlchemy(app)
@@ -33,20 +31,18 @@ class Produto(db.Model):
     nome = db.Column(db.String(100), nullable=False)
     preco = db.Column(db.Float, nullable=False)
     descricao = db.Column(db.String(500), nullable=True)
-    imagem_url = db.Column(db.String(250), nullable=True) # Agora armazena o nome do arquivo
+    imagem_url = db.Column(db.String(250), nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categoria.id'), nullable=False)
 
 # --- Rotas da Aplicação ---
 
-# Página principal (pública) que mostra o cardápio
 @app.route('/')
 def cliente_cardapio():
     categorias = Categoria.query.all()
     whatsapp_number = "5519986088874"
     return render_template('cliente_cardapio.html', categorias=categorias, whatsapp_number=whatsapp_number)
 
-# Rota para servir as imagens que foram salvas via upload
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
@@ -73,14 +69,10 @@ def dashboard():
 def admin_cardapio():
     if request.method == 'POST':
         imagem_salva = None
-        # Verifica se um arquivo foi enviado no formulário
         if 'productImage' in request.files:
             file = request.files['productImage']
-            # Se o arquivo tiver um nome (ou seja, não está vazio)
             if file.filename != '':
-                # Garante que o nome do arquivo é seguro
                 imagem_salva = secure_filename(file.filename)
-                # Salva o arquivo na nossa pasta de uploads
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], imagem_salva))
 
         novo_produto = Produto(
@@ -88,7 +80,7 @@ def admin_cardapio():
             preco=float(request.form['productPrice']),
             descricao=request.form['productDescription'],
             categoria_id=request.form['productCategory'],
-            imagem_url=imagem_salva  # Salva o nome do arquivo no banco
+            imagem_url=imagem_salva
         )
         db.session.add(novo_produto)
         db.session.commit()
@@ -106,6 +98,37 @@ def toggle_produto(produto_id):
     status = "ativado" if produto.ativo else "desativado"
     flash(f'Produto {produto.nome} foi {status}.', 'info')
     return redirect(url_for('admin_cardapio'))
+
+# --- NOVAS ROTAS PARA GERENCIAR CATEGORIAS ---
+
+@app.route('/admin/categorias')
+def admin_categorias():
+    categorias = Categoria.query.all()
+    return render_template('admin_categorias.html', categorias=categorias)
+
+@app.route('/admin/categoria/update_image/<int:categoria_id>', methods=['POST'])
+def update_categoria_image(categoria_id):
+    categoria = Categoria.query.get_or_404(categoria_id)
+    if 'categoryImage' in request.files:
+        file = request.files['categoryImage']
+        if file.filename != '':
+            # Deleta a imagem antiga se existir (opcional, mas bom para limpeza)
+            if categoria.imagem_url and 'http' not in categoria.imagem_url:
+                old_image_path = os.path.join(app.config['UPLOAD_FOLDER'], categoria.imagem_url)
+                if os.path.exists(old_image_path):
+                    os.remove(old_image_path)
+            
+            # Salva a nova imagem
+            imagem_salva = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], imagem_salva))
+            categoria.imagem_url = imagem_salva
+            
+            db.session.commit()
+            flash(f'Imagem da categoria "{categoria.nome}" atualizada com sucesso!', 'success')
+        else:
+            flash('Nenhum arquivo selecionado.', 'danger')
+    
+    return redirect(url_for('admin_categorias'))
 
 # --- Comando para inicializar o banco de dados ---
 @app.cli.command("init-db")

@@ -1,0 +1,39 @@
+{% extends 'layout.html' %}
+{% block title %}Gerenciar Categorias{% endblock %}
+{% block content %}
+<div class="page-header">
+     <a href="{{ url_for('dashboard') }}" class="back-button">← Voltar ao Dashboard</a>
+</div>
+
+<div class="admin-panel">
+    <h2 class="admin-title">🖼️ Gerenciar Imagens das Categorias</h2>
+    <p>Aqui você pode atualizar a imagem de cada categoria. As imagens ideais são retangulares (formato paisagem).</p>
+</div>
+
+<div class="products-grid">
+    {% for categoria in categorias %}
+    <div class="product-card" style="flex-direction: column; align-items: center;">
+        
+        {% if categoria.imagem_url %}
+            {% if 'http' in categoria.imagem_url %}
+                <img src="{{ categoria.imagem_url }}" alt="{{ categoria.nome }}" class="product-image" style="width: 100%; height: 200px; object-fit: cover; margin-bottom: 1rem;">
+            {% else %}
+                <img src="{{ url_for('uploaded_file', filename=categoria.imagem_url) }}" alt="{{ categoria.nome }}" class="product-image" style="width: 100%; height: 200px; object-fit: cover; margin-bottom: 1rem;">
+            {% endif %}
+        {% else %}
+            <div class="product-image placeholder-image" style="width: 100%; height: 200px; margin-bottom: 1rem;">Sem imagem</div>
+        {% endif %}
+
+        <h3 class="product-title">{{ categoria.nome }}</h3>
+
+        <form method="POST" action="{{ url_for('update_categoria_image', categoria_id=categoria.id) }}" enctype="multipart/form-data" style="margin-top: 1rem; width: 100%;">
+            <div class="form-group">
+                <label for="categoryImage-{{ categoria.id }}">Trocar Imagem:</label>
+                <input type="file" name="categoryImage" id="categoryImage-{{ categoria.id }}" accept="image/*" required class="form-group" style="padding: 0.5rem; border: 1px solid #ccc; border-radius: 5px;">
+            </div>
+            <button type="submit" class="btn" style="width: 100%;">Salvar Nova Imagem</button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

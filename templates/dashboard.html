@@ -4,13 +4,22 @@
 <div style="text-align: center;">
     <h2 class="page-title">Painel de Controle</h2>
     <p>Bem-vindo, Administrador!</p>
-    <div class="categories-grid" style="max-width: 400px; margin: 2rem auto;">
+    <div class="categories-grid">
         <a href="{{ url_for('admin_cardapio') }}" style="text-decoration: none;">
             <div class="category-card">
                 <div class="category-info">
                     <span style="font-size: 3rem;">📋</span>
-                    <h3 class="category-title">Cardápio Online</h3>
-                    <p class="category-description">Adicionar, editar e gerenciar produtos.</p>
+                    <h3 class="category-title">Gerenciar Produtos</h3>
+                    <p class="category-description">Adicionar, editar e ativar/desativar produtos.</p>
+                </div>
+            </div>
+        </a>
+        <a href="{{ url_for('admin_categorias') }}" style="text-decoration: none;">
+            <div class="category-card">
+                <div class="category-info">
+                    <span style="font-size: 3rem;">🖼️</span>
+                    <h3 class="category-title">Gerenciar Categorias</h3>
+                    <p class="category-description">Alterar as imagens de capa das categorias.</p>
                 </div>
             </div>
         </a>
