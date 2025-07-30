@@ -90,6 +90,36 @@ def admin_cardapio():
     categorias = Categoria.query.all()
     return render_template('admin_cardapio.html', categorias=categorias)
 
+# --- NOVA ROTA PARA EDITAR PRODUTO ---
+@app.route('/admin/produto/editar/<int:produto_id>', methods=['GET', 'POST'])
+def editar_produto(produto_id):
+    produto = Produto.query.get_or_404(produto_id)
+    categorias = Categoria.query.all()
+
+    if request.method == 'POST':
+        # Atualiza os dados do produto com os dados do formulário
+        produto.nome = request.form['productName']
+        produto.preco = float(request.form['productPrice'])
+        produto.descricao = request.form['productDescription']
+        produto.categoria_id = request.form['productCategory']
+
+        # Verifica se uma nova imagem foi enviada
+        if 'productImage' in request.files:
+            file = request.files['productImage']
+            if file.filename != '':
+                # Salva a nova imagem e atualiza o nome no banco
+                imagem_salva = secure_filename(file.filename)
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], imagem_salva))
+                produto.imagem_url = imagem_salva
+        
+        db.session.commit()
+        flash('Produto atualizado com sucesso!', 'success')
+        return redirect(url_for('admin_cardapio'))
+
+    # Se o método for GET, apenas mostra o formulário pré-preenchido
+    return render_template('editar_produto.html', produto=produto, categorias=categorias)
+
+
 @app.route('/admin/produto/toggle/<int:produto_id>', methods=['POST'])
 def toggle_produto(produto_id):
     produto = Produto.query.get_or_404(produto_id)
@@ -98,8 +128,6 @@ def toggle_produto(produto_id):
     status = "ativado" if produto.ativo else "desativado"
     flash(f'Produto {produto.nome} foi {status}.', 'info')
     return redirect(url_for('admin_cardapio'))
-
-# --- NOVAS ROTAS PARA GERENCIAR CATEGORIAS ---
 
 @app.route('/admin/categorias')
 def admin_categorias():
@@ -112,13 +140,11 @@ def update_categoria_image(categoria_id):
     if 'categoryImage' in request.files:
         file = request.files['categoryImage']
         if file.filename != '':
-            # Deleta a imagem antiga se existir (opcional, mas bom para limpeza)
             if categoria.imagem_url and 'http' not in categoria.imagem_url:
                 old_image_path = os.path.join(app.config['UPLOAD_FOLDER'], categoria.imagem_url)
                 if os.path.exists(old_image_path):
                     os.remove(old_image_path)
             
-            # Salva a nova imagem
             imagem_salva = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], imagem_salva))
             categoria.imagem_url = imagem_salva
@@ -133,7 +159,6 @@ def update_categoria_image(categoria_id):
 # --- Comando para inicializar o banco de dados ---
 @app.cli.command("init-db")
 def init_db_command():
-    """Cria as tabelas do banco de dados e as categorias iniciais."""
     db.create_all()
     print("Banco de dados inicializado.")
 
