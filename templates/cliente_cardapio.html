@@ -75,15 +75,40 @@
                 <label for="pickup">Retirada no local</label>
             </div>
         </div>
+
         <h3 id="cart-total" style="margin-top: 1rem;"></h3>
         <button class="btn" onclick="sendToWhatsapp()">Enviar Pedido via WhatsApp</button>
         <button class="back-button" onclick="closeCartModal()" style="background: #666; margin-top: 1rem;">Fechar</button>
+        
+        <button class="back-button" onclick="clearCart()" style="background: #f59e0b; margin-top: 1rem;">Limpar Carrinho</button>
     </div>
 </div>
 
 
 <script>
 let cart = {};
+
+// === NOVAS FUNÇÕES ===
+function removeFromCart(itemName) {
+    if (cart[itemName]) {
+        delete cart[itemName];
+        flashMessage(`'${itemName}' removido do carrinho.`);
+        updateCart();
+    }
+}
+
+function clearCart() {
+    if (confirm("Você tem certeza que deseja limpar o carrinho?")) {
+        cart = {};
+        const deliveryOption = document.querySelector('input[name="deliveryOption"]:checked');
+        if (deliveryOption) {
+            deliveryOption.checked = false;
+        }
+        flashMessage("Carrinho esvaziado.");
+        updateCart();
+    }
+}
+// === FIM DAS NOVAS FUNÇÕES ===
 
 function scrollToCategory(catId) {
     document.getElementById(catId).scrollIntoView({ behavior: 'smooth' });
@@ -117,19 +142,37 @@ function updateCart() {
         const item = cart[name];
         itemsTotal += item.price * item.quantity;
         const li = document.createElement('li');
-        li.textContent = `${item.quantity}x ${name} - R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}`;
+
+        // Adicionado um 'span' para o texto e um botão 'Remover'
+        li.style.display = 'flex';
+        li.style.justifyContent = 'space-between';
+        li.style.alignItems = 'center';
         li.style.padding = '0.5rem 0';
         li.style.borderBottom = '1px solid #eee';
+        
+        const itemText = document.createElement('span');
+        itemText.textContent = `${item.quantity}x ${name} - R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}`;
+        
+        const removeButton = document.createElement('button');
+        removeButton.textContent = 'Remover';
+        removeButton.style.background = '#ef4444';
+        removeButton.style.color = 'white';
+        removeButton.style.border = 'none';
+        removeButton.style.borderRadius = '5px';
+        removeButton.style.padding = '0.3rem 0.6rem';
+        removeButton.style.cursor = 'pointer';
+        removeButton.onclick = () => removeFromCart(name);
+        
+        li.appendChild(itemText);
+        li.appendChild(removeButton);
         cartItems.appendChild(li);
     }
     
-    // Calcula a taxa de entrega
     const deliveryOption = document.querySelector('input[name="deliveryOption"]:checked');
     const deliveryFee = deliveryOption ? parseFloat(deliveryOption.value) : 0;
     
     const finalTotal = itemsTotal + deliveryFee;
 
-    // Monta o texto do total
     let totalText = `Subtotal: R$ ${itemsTotal.toFixed(2).replace('.', ',')}`;
     if (deliveryFee > 0) {
         totalText += ` + Entrega: R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
@@ -140,11 +183,10 @@ function updateCart() {
 }
 
 function sendToWhatsapp() {
-    // 1. Validação: Verifica se uma opção foi selecionada
     const deliveryOption = document.querySelector('input[name="deliveryOption"]:checked');
     if (!deliveryOption) {
         alert("Por favor, selecione uma opção de entrega ou retirada.");
-        return; // Para a execução da função
+        return;
     }
 
     let message = "Olá, Dogão do Alex! Gostaria de fazer o seguinte pedido:\n\n";
@@ -168,13 +210,9 @@ function sendToWhatsapp() {
     const whatsappUrl = `https://wa.me/{{ whatsapp_number }}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
     
-    // 2. Mensagem de confirmação para o cliente
     alert("aguarde que em no maximo 10 minutos entraremos em contato para confirmar o pedido");
 
-    // 3. Limpa o carrinho e fecha o modal
-    cart = {};
-    document.querySelector('input[name="deliveryOption"]:checked').checked = false; // Desmarca a opção
-    updateCart();
+    clearCart(); // Limpa o carrinho após o envio
 }
 
 function flashMessage(message) {
@@ -197,14 +235,13 @@ function flashMessage(message) {
 
 document.getElementById('cart-fab').addEventListener('click', () => {
     document.getElementById('cart-modal').style.display = 'flex';
-    updateCart(); // Atualiza o carrinho ao abrir
+    updateCart();
 });
 
 function closeCartModal() {
     document.getElementById('cart-modal').style.display = 'none';
 }
 
-// Adiciona um listener para recalcular o total sempre que uma opção de entrega for alterada
 document.querySelectorAll('input[name="deliveryOption"]').forEach(radio => {
     radio.addEventListener('change', updateCart);
 });
