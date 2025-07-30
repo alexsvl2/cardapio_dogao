@@ -1,0 +1,69 @@
+{% extends 'layout.html' %}
+{% block title %}Gerenciar Cardápio{% endblock %}
+{% block content %}
+<div class="page-header">
+     <a href="{{ url_for('dashboard') }}" class="back-button">← Voltar ao Dashboard</a>
+</div>
+
+<div class="admin-panel" id="adminPanel">
+    <h2 class="admin-title">⚙️ Adicionar Novo Produto</h2>
+    <form id="productForm" method="POST" action="{{ url_for('admin_cardapio') }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="productName">Nome do Produto</label>
+                <input type="text" id="productName" name="productName" required>
+            </div>
+            <div class="form-group">
+                <label for="productPrice">Preço (R$)</label>
+                <input type="number" id="productPrice" name="productPrice" step="0.01" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="productCategory">Categoria</label>
+                <select id="productCategory" name="productCategory" required>
+                    {% for cat in categorias %}
+                    <option value="{{ cat.id }}">{{ cat.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="productImage">URL da Imagem</label>
+                <input type="url" id="productImage" name="productImage">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="productDescription">Descrição</label>
+            <textarea id="productDescription" name="productDescription" rows="3"></textarea>
+        </div>
+        <button type="submit" class="btn">Adicionar Produto</button>
+    </form>
+</div>
+
+<div class="products-page" style="display: block; margin-top: 3rem;">
+    <h2 class="page-title">Produtos Cadastrados</h2>
+    {% for categoria in categorias %}
+        <h3 style="margin-top: 2rem; border-bottom: 2px solid #be0404; padding-bottom: 0.5rem;">{{ categoria.nome }}</h3>
+        <div class="products-grid">
+            {% if categoria.produtos %}
+                {% for produto in categoria.produtos %}
+                <div class="product-card">
+                    <div class="product-info" style="width: 100%;">
+                        <h3 class="product-title">{{ produto.nome }}</h3>
+                        <p class="product-description">{{ produto.descricao }}</p>
+                        <div class="product-price">R$ {{ "%.2f"|format(produto.preco)|replace('.', ',') }}</div>
+                        <form action="{{ url_for('toggle_produto', produto_id=produto.id) }}" method="POST" style="display: inline;">
+                            <button type="submit" class="btn" style="background: {{ '#10b981' if produto.ativo else '#ef4444' }};">
+                                {{ 'Desativar' if produto.ativo else 'Ativar' }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p>Nenhum produto nesta categoria.</p>
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends 'layout.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div style="text-align: center;">
+    <h2 class="page-title">Painel de Controle</h2>
+    <p>Bem-vindo, Administrador!</p>
+    <div class="categories-grid" style="max-width: 400px; margin: 2rem auto;">
+        <a href="{{ url_for('admin_cardapio') }}" style="text-decoration: none;">
+            <div class="category-card">
+                <div class="category-info">
+                    <span style="font-size: 3rem;">📋</span>
+                    <h3 class="category-title">Cardápio Online</h3>
+                    <p class="category-description">Adicionar, editar e gerenciar produtos.</p>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}
