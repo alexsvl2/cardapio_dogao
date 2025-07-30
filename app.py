@@ -35,11 +35,28 @@ class Produto(db.Model):
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categoria.id'), nullable=False)
 
+# === INÍCIO DA ALTERAÇÃO ===
+# 1. Função ajudante para ordenar as categorias na ordem desejada
+def get_categorias_ordenadas():
+    ordem_desejada = ["Hot Dog", "Lanches", "Bebidas", "Sobremesas"]
+    todas_categorias = Categoria.query.all()
+    
+    # Cria um dicionário para fácil acesso: {'Lanches': <Objeto Lanches>, ...}
+    categorias_dict = {cat.nome: cat for cat in todas_categorias}
+    
+    # Monta a lista final na ordem correta
+    categorias_ordenadas = [categorias_dict[nome] for nome in ordem_desejada if nome in categorias_dict]
+    
+    return categorias_ordenadas
+# === FIM DA ALTERAÇÃO ===
+
+
 # --- Rotas da Aplicação ---
 
 @app.route('/')
 def cliente_cardapio():
-    categorias = Categoria.query.all()
+    # 2. Usa a nova função para buscar as categorias na ordem certa
+    categorias = get_categorias_ordenadas()
     whatsapp_number = "5519986088874"
     return render_template('cliente_cardapio.html', categorias=categorias, whatsapp_number=whatsapp_number)
 
@@ -86,28 +103,25 @@ def admin_cardapio():
         db.session.commit()
         flash('Produto adicionado com sucesso!', 'success')
         return redirect(url_for('admin_cardapio'))
-
-    categorias = Categoria.query.all()
+    
+    # 3. Usa a função aqui também para manter a consistência no painel
+    categorias = get_categorias_ordenadas()
     return render_template('admin_cardapio.html', categorias=categorias)
 
-# --- NOVA ROTA PARA EDITAR PRODUTO ---
 @app.route('/admin/produto/editar/<int:produto_id>', methods=['GET', 'POST'])
 def editar_produto(produto_id):
     produto = Produto.query.get_or_404(produto_id)
-    categorias = Categoria.query.all()
+    categorias = Categoria.query.all() # A ordem no dropdown de edição não importa tanto
 
     if request.method == 'POST':
-        # Atualiza os dados do produto com os dados do formulário
         produto.nome = request.form['productName']
         produto.preco = float(request.form['productPrice'])
         produto.descricao = request.form['productDescription']
         produto.categoria_id = request.form['productCategory']
 
-        # Verifica se uma nova imagem foi enviada
         if 'productImage' in request.files:
             file = request.files['productImage']
             if file.filename != '':
-                # Salva a nova imagem e atualiza o nome no banco
                 imagem_salva = secure_filename(file.filename)
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], imagem_salva))
                 produto.imagem_url = imagem_salva
@@ -116,9 +130,7 @@ def editar_produto(produto_id):
         flash('Produto atualizado com sucesso!', 'success')
         return redirect(url_for('admin_cardapio'))
 
-    # Se o método for GET, apenas mostra o formulário pré-preenchido
     return render_template('editar_produto.html', produto=produto, categorias=categorias)
-
 
 @app.route('/admin/produto/toggle/<int:produto_id>', methods=['POST'])
 def toggle_produto(produto_id):
@@ -131,7 +143,8 @@ def toggle_produto(produto_id):
 
 @app.route('/admin/categorias')
 def admin_categorias():
-    categorias = Categoria.query.all()
+    # 4. E finalmente aqui, para a página de gerenciamento de categorias
+    categorias = get_categorias_ordenadas()
     return render_template('admin_categorias.html', categorias=categorias)
 
 @app.route('/admin/categoria/update_image/<int:categoria_id>', methods=['POST'])
