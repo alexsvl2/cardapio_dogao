@@ -19,7 +19,6 @@
         {% endfor %}
     </div>
 </div>
-
 <div class="products-page" id="productsPage" style="display:block; margin-top: 3rem;">
     {% for categoria in categorias %}
     <div id="cat-{{ categoria.id }}">
@@ -49,17 +48,14 @@
     </div>
     {% endfor %}
 </div>
-
 <div id="cart-fab" style="position: fixed; bottom: 20px; right: 20px; background: #be0404; color: white; width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; box-shadow: 0 5px 15px rgba(0,0,0,0.3); cursor: pointer; display: none;">
     🛒
 </div>
-
 <div id="cart-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1002;">
     <div style="background: white; padding: 2rem; border-radius: 15px; width: 90%; max-width: 500px;">
         <h2>Meu Pedido</h2>
         <ul id="cart-items" style="list-style: none; padding: 0;"></ul>
         <hr style="margin: 1rem 0;">
-
         <div id="delivery-options">
             <h4>Escolha uma opção:</h4>
             <div style="margin-top: 0.5rem;">
@@ -75,175 +71,81 @@
                 <label for="pickup">Retirada no local</label>
             </div>
         </div>
-
         <h3 id="cart-total" style="margin-top: 1rem;"></h3>
         <button class="btn" onclick="sendToWhatsapp()">Enviar Pedido via WhatsApp</button>
         <button class="back-button" onclick="closeCartModal()" style="background: #666; margin-top: 1rem;">Fechar</button>
-        
         <button class="back-button" onclick="clearCart()" style="background: #f59e0b; margin-top: 1rem;">Limpar Carrinho</button>
     </div>
 </div>
 
 
 <script>
-let cart = {};
+    // Toda a parte de JS até a função sendToWhatsapp continua a mesma
+    let cart = {};function removeFromCart(itemName){if(cart[itemName]){delete cart[itemName];flashMessage(`'${itemName}' removido do carrinho.`);updateCart();}}function clearCart(){if(confirm("Você tem certeza que deseja limpar o carrinho?")){cart={};const deliveryOption=document.querySelector('input[name="deliveryOption"]:checked');if(deliveryOption){deliveryOption.checked=false;}flashMessage("Carrinho esvaziado.");updateCart();}}function scrollToCategory(catId){document.getElementById(catId).scrollIntoView({behavior:'smooth'});}function addToCart(name,price){if(cart[name]){cart[name].quantity++;}else{cart[name]={price:price,quantity:1};}updateCart();flashMessage(`'${name}' adicionado ao carrinho!`);}function updateCart(){const cartItems=document.getElementById('cart-items');const cartFab=document.getElementById('cart-fab');cartItems.innerHTML='';let itemsTotal=0;if(Object.keys(cart).length>0){cartFab.style.display='flex';}else{cartFab.style.display='none';closeCartModal();return;}
+    for(const name in cart){const item=cart[name];itemsTotal+=item.price*item.quantity;const li=document.createElement('li');li.style.display='flex';li.style.justifyContent='space-between';li.style.alignItems='center';li.style.padding='0.5rem 0';li.style.borderBottom='1px solid #eee';const itemText=document.createElement('span');itemText.textContent=`${item.quantity}x ${name} - R$ ${(item.price*item.quantity).toFixed(2).replace('.',',')}`;const removeButton=document.createElement('button');removeButton.textContent='Remover';removeButton.style.background='#ef4444';removeButton.style.color='white';removeButton.style.border='none';removeButton.style.borderRadius='5px';removeButton.style.padding='0.3rem 0.6rem';removeButton.style.cursor='pointer';removeButton.onclick=()=>removeFromCart(name);li.appendChild(itemText);li.appendChild(removeButton);cartItems.appendChild(li);}
+    const deliveryOption=document.querySelector('input[name="deliveryOption"]:checked');const deliveryFee=deliveryOption?parseFloat(deliveryOption.value):0;const finalTotal=itemsTotal+deliveryFee;let totalText=`Subtotal: R$ ${itemsTotal.toFixed(2).replace('.',',')}`;if(deliveryFee>0){totalText+=` + Entrega: R$ ${deliveryFee.toFixed(2).replace('.',',')}`;}
+    totalText+=` | Total: R$ ${finalTotal.toFixed(2).replace('.',',')}`;document.getElementById('cart-total').textContent=totalText;}
 
-// === NOVAS FUNÇÕES ===
-function removeFromCart(itemName) {
-    if (cart[itemName]) {
-        delete cart[itemName];
-        flashMessage(`'${itemName}' removido do carrinho.`);
-        updateCart();
-    }
-}
-
-function clearCart() {
-    if (confirm("Você tem certeza que deseja limpar o carrinho?")) {
-        cart = {};
+    // === FUNÇÃO MODIFICADA ===
+    async function sendToWhatsapp() {
         const deliveryOption = document.querySelector('input[name="deliveryOption"]:checked');
-        if (deliveryOption) {
-            deliveryOption.checked = false;
+        if (!deliveryOption) {
+            alert("Por favor, selecione uma opção de entrega ou retirada.");
+            return;
         }
-        flashMessage("Carrinho esvaziado.");
-        updateCart();
-    }
-}
-// === FIM DAS NOVAS FUNÇÕES ===
 
-function scrollToCategory(catId) {
-    document.getElementById(catId).scrollIntoView({ behavior: 'smooth' });
-}
+        // Monta o objeto com os dados do pedido para salvar
+        let itemsTotal = 0;
+        Object.values(cart).forEach(item => { itemsTotal += item.price * item.quantity; });
+        const deliveryFee = parseFloat(deliveryOption.value);
+        const finalTotal = itemsTotal + deliveryFee;
 
-function addToCart(name, price) {
-    if (cart[name]) {
-        cart[name].quantity++;
-    } else {
-        cart[name] = { price: price, quantity: 1 };
-    }
-    updateCart();
-    flashMessage(`'${name}' adicionado ao carrinho!`);
-}
+        const orderData = {
+            cart: cart,
+            delivery: {
+                label: deliveryOption.getAttribute('data-label'),
+                fee: deliveryFee
+            },
+            total: finalTotal
+        };
 
-function updateCart() {
-    const cartItems = document.getElementById('cart-items');
-    const cartFab = document.getElementById('cart-fab');
-    cartItems.innerHTML = '';
-    let itemsTotal = 0;
+        // Envia o pedido para o servidor para ser salvo no banco
+        try {
+            const response = await fetch('/api/save_order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            });
 
-    if (Object.keys(cart).length > 0) {
-        cartFab.style.display = 'flex';
-    } else {
-        cartFab.style.display = 'none';
-        closeCartModal();
-        return;
-    }
+            if (!response.ok) {
+                throw new Error('Falha ao salvar o pedido no servidor.');
+            }
 
-    for (const name in cart) {
-        const item = cart[name];
-        itemsTotal += item.price * item.quantity;
-        const li = document.createElement('li');
+            // Se salvou com sucesso, continua para o WhatsApp
+            let message = "Olá, Dogão do Alex! Gostaria de fazer o seguinte pedido:\n\n";
+            for (const name in cart) {
+                message += `*${item.quantity}x* - ${name}\n`;
+            }
+            message += `\n*Tipo de Entrega:* ${orderData.delivery.label}\n`;
+            if (orderData.delivery.fee > 0) {
+                message += `*Taxa de Entrega:* R$ ${orderData.delivery.fee.toFixed(2).replace('.', ',')}\n`;
+            }
+            message += `\n*Total do Pedido:* R$ ${orderData.total.toFixed(2).replace('.', ',')}`;
 
-        // Adicionado um 'span' para o texto e um botão 'Remover'
-        li.style.display = 'flex';
-        li.style.justifyContent = 'space-between';
-        li.style.alignItems = 'center';
-        li.style.padding = '0.5rem 0';
-        li.style.borderBottom = '1px solid #eee';
-        
-        const itemText = document.createElement('span');
-        itemText.textContent = `${item.quantity}x ${name} - R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}`;
-        
-        const removeButton = document.createElement('button');
-        removeButton.textContent = 'Remover';
-        removeButton.style.background = '#ef4444';
-        removeButton.style.color = 'white';
-        removeButton.style.border = 'none';
-        removeButton.style.borderRadius = '5px';
-        removeButton.style.padding = '0.3rem 0.6rem';
-        removeButton.style.cursor = 'pointer';
-        removeButton.onclick = () => removeFromCart(name);
-        
-        li.appendChild(itemText);
-        li.appendChild(removeButton);
-        cartItems.appendChild(li);
-    }
-    
-    const deliveryOption = document.querySelector('input[name="deliveryOption"]:checked');
-    const deliveryFee = deliveryOption ? parseFloat(deliveryOption.value) : 0;
-    
-    const finalTotal = itemsTotal + deliveryFee;
+            const whatsappUrl = `https://wa.me/{{ whatsapp_number }}?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+            
+            alert("aguarde que em no maximo 10 minutos entraremos em contato para confirmar o pedido");
+            clearCart();
 
-    let totalText = `Subtotal: R$ ${itemsTotal.toFixed(2).replace('.', ',')}`;
-    if (deliveryFee > 0) {
-        totalText += ` + Entrega: R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
-    }
-    totalText += ` | Total: R$ ${finalTotal.toFixed(2).replace('.', ',')}`;
-    
-    document.getElementById('cart-total').textContent = totalText;
-}
-
-function sendToWhatsapp() {
-    const deliveryOption = document.querySelector('input[name="deliveryOption"]:checked');
-    if (!deliveryOption) {
-        alert("Por favor, selecione uma opção de entrega ou retirada.");
-        return;
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('Ocorreu um erro ao processar seu pedido. Por favor, tente novamente.');
+        }
     }
 
-    let message = "Olá, Dogão do Alex! Gostaria de fazer o seguinte pedido:\n\n";
-    let itemsTotal = 0;
-    for (const name in cart) {
-        const item = cart[name];
-        message += `*${item.quantity}x* - ${name}\n`;
-        itemsTotal += item.price * item.quantity;
-    }
-    
-    const deliveryFee = parseFloat(deliveryOption.value);
-    const finalTotal = itemsTotal + deliveryFee;
-    const deliveryLabel = deliveryOption.getAttribute('data-label');
-
-    message += `\n*Tipo de Entrega:* ${deliveryLabel}\n`;
-    if (deliveryFee > 0) {
-        message += `*Taxa de Entrega:* R$ ${deliveryFee.toFixed(2).replace('.', ',')}\n`;
-    }
-    message += `\n*Total do Pedido:* R$ ${finalTotal.toFixed(2).replace('.', ',')}`;
-
-    const whatsappUrl = `https://wa.me/{{ whatsapp_number }}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
-    
-    alert("aguarde que em no maximo 10 minutos entraremos em contato para confirmar o pedido");
-
-    clearCart(); // Limpa o carrinho após o envio
-}
-
-function flashMessage(message) {
-    const div = document.createElement('div');
-    div.textContent = message;
-    div.style.position = 'fixed';
-    div.style.bottom = '90px';
-    div.style.left = '50%';
-    div.style.transform = 'translateX(-50%)';
-    div.style.background = '#333';
-    div.style.color = 'white';
-    div.style.padding = '10px 20px';
-    div.style.borderRadius = '20px';
-    div.style.zIndex = '1001';
-    document.body.appendChild(div);
-    setTimeout(() => {
-        div.remove();
-    }, 2500);
-}
-
-document.getElementById('cart-fab').addEventListener('click', () => {
-    document.getElementById('cart-modal').style.display = 'flex';
-    updateCart();
-});
-
-function closeCartModal() {
-    document.getElementById('cart-modal').style.display = 'none';
-}
-
-document.querySelectorAll('input[name="deliveryOption"]').forEach(radio => {
-    radio.addEventListener('change', updateCart);
-});
+    function flashMessage(message){const div=document.createElement('div');div.textContent=message;div.style.position='fixed';div.style.bottom='90px';div.style.left='50%';div.style.transform='translateX(-50%)';div.style.background='#333';div.style.color='white';div.style.padding='10px 20px';div.style.borderRadius='20px';div.style.zIndex='1001';document.body.appendChild(div);setTimeout(()=>{div.remove();},2500);}
+    document.getElementById('cart-fab').addEventListener('click',()=>{document.getElementById('cart-modal').style.display='flex';updateCart();});function closeCartModal(){document.getElementById('cart-modal').style.display='none';}
+    document.querySelectorAll('input[name="deliveryOption"]').forEach(radio=>{radio.addEventListener('change',updateCart);});
 </script>
 {% endblock %}

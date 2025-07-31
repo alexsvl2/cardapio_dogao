@@ -1,0 +1,43 @@
+{% extends 'layout.html' %}
+{% block title %}Histórico de Pedidos{% endblock %}
+{% block content %}
+<div class="page-header" style="justify-content: space-between;">
+    <a href="{{ url_for('dashboard') }}" class="back-button">← Voltar ao Dashboard</a>
+    <h2 class="page-title" style="margin-bottom: 0;">Histórico de Pedidos</h2>
+    <div></div>
+</div>
+
+<div class="admin-panel">
+    {% if pedidos %}
+        {% for pedido in pedidos %}
+            <div class="product-card" style="margin-bottom: 1.5rem; flex-direction: column; align-items: flex-start;">
+                <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <h3 class="product-title">Pedido #{{ pedido.id }}</h3>
+                        <p class="product-description" style="margin: 0;">Data: {{ pedido.timestamp.strftime('%d/%m/%Y %H:%M') }}</p>
+                    </div>
+                    <div class="product-price">Total: R$ {{ "%.2f"|format(pedido.total)|replace('.', ',') }}</div>
+                </div>
+                
+                <strong>Itens do Pedido:</strong>
+                <ul style="list-style-position: inside; width: 100%; margin: 0.5rem 0;">
+                    {% for item in pedido.itens %}
+                    <li>{{ item.quantidade }}x {{ item.nome_produto }} (R$ {{ "%.2f"|format(item.preco_unitario)|replace('.', ',') }} cada)</li>
+                    {% endfor %}
+                </ul>
+                <p style="margin-top: 1rem;"><strong>Entrega:</strong> {{ pedido.tipo_entrega }} (Taxa: R$ {{ "%.2f"|format(pedido.taxa_entrega)|replace('.', ',') }})</p>
+
+                <div style="display: flex; gap: 10px; margin-top: 1rem; border-top: 1px solid #eee; padding-top: 1rem; width: 100%;">
+                    <form action="{{ url_for('deletar_pedido', pedido_id=pedido.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja deletar o pedido #{{ pedido.id }}? Esta ação não pode ser desfeita.');">
+                        <button type="submit" class="btn" style="background: #ef4444;">Deletar</button>
+                    </form>
+                    <button class="btn" style="background: #6b7280;" onclick="alert('Função de editar em desenvolvimento.');">Editar</button>
+                    <a href="{{ url_for('imprimir_pedido', pedido_id=pedido.id) }}" target="_blank" class="btn" style="background: #3b82f6;">Imprimir</a>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>Nenhum pedido no histórico ainda.</p>
+    {% endif %}
+</div>
+{% endblock %}
