@@ -6,10 +6,14 @@
     <div class="categories-grid" id="categoriesGrid">
         {% for categoria in categorias %}
         <div class="category-card" onclick="scrollToCategory('cat-{{ categoria.id }}')">
-            {% if 'http' in categoria.imagem_url %}
-                <img src="{{ categoria.imagem_url }}" alt="{{ categoria.nome }}" class="category-image">
+            {% if categoria.imagem_url %}
+                {% if 'http' in categoria.imagem_url %}
+                    <img src="{{ categoria.imagem_url }}" alt="{{ categoria.nome }}" class="category-image">
+                {% else %}
+                    <img src="{{ url_for('uploaded_file', filename=categoria.imagem_url) }}" alt="{{ categoria.nome }}" class="category-image">
+                {% endif %}
             {% else %}
-                <img src="{{ url_for('uploaded_file', filename=categoria.imagem_url) }}" alt="{{ categoria.nome }}" class="category-image">
+                <div class="product-image placeholder-image">Sem imagem</div>
             {% endif %}
             <div class="category-info">
                 <h3 class="category-title">{{ categoria.nome }}</h3>
@@ -80,13 +84,11 @@
 
 
 <script>
-    // Toda a parte de JS até a função sendToWhatsapp continua a mesma
     let cart = {};function removeFromCart(itemName){if(cart[itemName]){delete cart[itemName];flashMessage(`'${itemName}' removido do carrinho.`);updateCart();}}function clearCart(){if(confirm("Você tem certeza que deseja limpar o carrinho?")){cart={};const deliveryOption=document.querySelector('input[name="deliveryOption"]:checked');if(deliveryOption){deliveryOption.checked=false;}flashMessage("Carrinho esvaziado.");updateCart();}}function scrollToCategory(catId){document.getElementById(catId).scrollIntoView({behavior:'smooth'});}function addToCart(name,price){if(cart[name]){cart[name].quantity++;}else{cart[name]={price:price,quantity:1};}updateCart();flashMessage(`'${name}' adicionado ao carrinho!`);}function updateCart(){const cartItems=document.getElementById('cart-items');const cartFab=document.getElementById('cart-fab');cartItems.innerHTML='';let itemsTotal=0;if(Object.keys(cart).length>0){cartFab.style.display='flex';}else{cartFab.style.display='none';closeCartModal();return;}
     for(const name in cart){const item=cart[name];itemsTotal+=item.price*item.quantity;const li=document.createElement('li');li.style.display='flex';li.style.justifyContent='space-between';li.style.alignItems='center';li.style.padding='0.5rem 0';li.style.borderBottom='1px solid #eee';const itemText=document.createElement('span');itemText.textContent=`${item.quantity}x ${name} - R$ ${(item.price*item.quantity).toFixed(2).replace('.',',')}`;const removeButton=document.createElement('button');removeButton.textContent='Remover';removeButton.style.background='#ef4444';removeButton.style.color='white';removeButton.style.border='none';removeButton.style.borderRadius='5px';removeButton.style.padding='0.3rem 0.6rem';removeButton.style.cursor='pointer';removeButton.onclick=()=>removeFromCart(name);li.appendChild(itemText);li.appendChild(removeButton);cartItems.appendChild(li);}
     const deliveryOption=document.querySelector('input[name="deliveryOption"]:checked');const deliveryFee=deliveryOption?parseFloat(deliveryOption.value):0;const finalTotal=itemsTotal+deliveryFee;let totalText=`Subtotal: R$ ${itemsTotal.toFixed(2).replace('.',',')}`;if(deliveryFee>0){totalText+=` + Entrega: R$ ${deliveryFee.toFixed(2).replace('.',',')}`;}
     totalText+=` | Total: R$ ${finalTotal.toFixed(2).replace('.',',')}`;document.getElementById('cart-total').textContent=totalText;}
 
-    // === FUNÇÃO MODIFICADA ===
     async function sendToWhatsapp() {
         const deliveryOption = document.querySelector('input[name="deliveryOption"]:checked');
         if (!deliveryOption) {
@@ -94,7 +96,6 @@
             return;
         }
 
-        // Monta o objeto com os dados do pedido para salvar
         let itemsTotal = 0;
         Object.values(cart).forEach(item => { itemsTotal += item.price * item.quantity; });
         const deliveryFee = parseFloat(deliveryOption.value);
@@ -109,7 +110,9 @@
             total: finalTotal
         };
 
-        // Envia o pedido para o servidor para ser salvo no banco
+        // ===== LINHA DE ESPIONAGEM ADICIONADA AQUI =====
+        console.log("Dados que serão enviados para o servidor:", orderData);
+
         try {
             const response = await fetch('/api/save_order', {
                 method: 'POST',
@@ -121,9 +124,9 @@
                 throw new Error('Falha ao salvar o pedido no servidor.');
             }
 
-            // Se salvou com sucesso, continua para o WhatsApp
             let message = "Olá, Dogão do Alex! Gostaria de fazer o seguinte pedido:\n\n";
             for (const name in cart) {
+                const item = cart[name]; // Adicionado para corrigir um bug
                 message += `*${item.quantity}x* - ${name}\n`;
             }
             message += `\n*Tipo de Entrega:* ${orderData.delivery.label}\n`;
