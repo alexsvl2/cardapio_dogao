@@ -1,6 +1,10 @@
 {% extends 'layout.html' %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
+<div style="text-align: right; margin-bottom: 2rem;">
+    <a href="{{ url_for('logout') }}" class="btn" style="background: #6b7280;">Sair do Sistema</a>
+</div>
+
 <div style="text-align: center;">
     <h2 class="page-title">Painel de Controle</h2>
     <p>Bem-vindo, Administrador!</p>
