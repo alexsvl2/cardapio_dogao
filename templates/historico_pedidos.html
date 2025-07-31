@@ -14,7 +14,7 @@
                 <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 1rem; margin-bottom: 1rem;">
                     <div>
                         <h3 class="product-title">Pedido #{{ pedido.id }}</h3>
-                        <p class="product-description" style="margin: 0;">Data: {{ pedido.timestamp.strftime('%d/%m/%Y %H:%M') }}</p>
+                        <p class="product-description" style="margin: 0;">Data: {{ pedido.timestamp | localdatetime }}</p>
                     </div>
                     <div class="product-price">Total: R$ {{ "%.2f"|format(pedido.total)|replace('.', ',') }}</div>
                 </div>
